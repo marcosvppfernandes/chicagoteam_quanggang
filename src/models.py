@@ -91,7 +91,6 @@ class Preprocessor():
         
         
         for dataset in tts_data:
-            # source: https://dunyaoguz.github.io/my-blog/dataframemapper.html
             
             X_tr_cont = ss.fit_transform(dataset['train']['X'][continuous_cols])
             X_tr_cats = ohe.fit_transform(dataset['train']['X'][categorical_cols])
@@ -226,23 +225,28 @@ class MasterModeler():
             
 # skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
 
-def kfold_validation(X_train, y_train):
-    from sklearn.model_selection import KFold
-    from sklearn.metrics import recall_score
+def kfold_validation(X_train, y_train, classifier, 
+                     continuous_cols, categorical_cols, smote=False,
+                    minority_size=0.7, majority_reduce=0.7):
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.metrics import recall_score, precision_score, accuracy_score, confusion_matrix
+    from sklearn.linear_model import LogisticRegression
 
-    kf = KFold()
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1001)
 
     val_recall = []
+    val_prec = []
+    val_acc = []
 
-    for train_ind, val_ind in kf.split(X_train, y_train):
+    for train_ind, val_ind in skf.split(X_train, y_train):
         x_t = X_train.iloc[train_ind]
         y_t = y_train.iloc[train_ind]
 
         ss = StandardScaler()
         ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
 
-        cont = ['TIME']
-        cat_cols = list(tts_data[0]['train']['X'].drop(labels=['VEHICLE_ID', 'TIME'], axis=1).columns)
+        cont = continuous_cols
+        cat_cols = categorical_cols
 
         scaled = ss.fit_transform(x_t[cont])
         dummies = ohe.fit_transform(x_t[cat_cols])
@@ -253,19 +257,42 @@ def kfold_validation(X_train, y_train):
 
         x_val = X_train.iloc[val_ind]
         y_val = y_train.iloc[val_ind]
-
+        
+        
         sc = ss.transform(x_val[cont])
         dums = ohe.transform(x_val[cat_cols])
 
         x_val = pd.concat([pd.DataFrame(sc, columns=cont), 
                                   pd.DataFrame(dums, columns=ohe.get_feature_names())], axis=1)
+        
+        if smote==True:
+            oversample = SMOTE(sampling_strategy=minority_size)
+            undersample = RandomUnderSampler(sampling_strategy=majority_reduce)
+            
+            X_part_over, y_part_over = oversample.fit_resample(x_t, y_t)
 
-        lr = LogisticRegression()
+            X_under, y_under = undersample.fit_resample(X_part_over, y_part_over)
+            
+            clf = classifier
 
-        lr.fit(x_t, y_t)
+            clf.fit(X_under, y_under)
 
-        val_recall.append(recall_score(y_val, lr.predict(x_val)))
+            val_recall.append(recall_score(y_val, clf.predict(x_val)))
+            val_prec.append(precision_score(y_val, clf.predict(x_val)))
+            val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
+            
+            return val_recall, val_prec, val_acc
+            
+        else:
+            clf = classifier
 
+            clf.fit(x_t, y_t)
+
+            val_recall.append(recall_score(y_val, clf.predict(x_val)))
+            val_prec.append(precision_score(y_val, clf.predict(x_val)))
+            val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
+            
+            return val_recall, val_prec, val_acc
 
 ######################## CHRISTOS ####################
 

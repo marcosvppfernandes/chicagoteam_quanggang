@@ -9,8 +9,8 @@ def column_mask(dfs):
     Takes in list of dfs and returns data frames with only necessary columns
     '''
     cols_crashes = ['crash_record_id', 'crash_date', 'posted_speed_limit','traffic_control_device', 'weather_condition', 'lighting_condition', 'first_crash_type', 'trafficway_type', 'alignment', 'roadway_surface_cond', 'road_defect', 'crash_type', 'damage', 'prim_contributory_cause', 'sec_contributory_cause', 'street_name', 'num_units', 'most_severe_injury', 'injuries_total', 'crash_hour', 'crash_day_of_week', 'latitude', 'longitude']
-    cols_people = ['crash_record_id', 'person_type', 'seat_no', 'city', 'zipcode', 'sex', 'age', 'drivers_license_class', 'safety_equipment', 'airbag_deployed', 'ejection', 'injury_classification', 'driver_action', 'driver_vision', 'physical_condition', 'pedpedal_action', 'pedpedal_visibility', 'pedpedal_location', 'bac_result', 'bac_result value', 'cell_phone_use']
-    cols_vehicles = ['crash_record_id', 'unit_type', 'num_passengers', 'make', 'model', 'vehicle_year', 'vehicle_defect', 'vehicle_type', 'vehicle_use', 'maneuver', 'occupant_cnt']
+    cols_people = ['crash_record_id', 'person_type', 'sex', 'age', 'safety_equipment', 'airbag_deployed', 'ejection', 'injury_classification', 'driver_action', 'driver_vision', 'physical_condition', 'pedpedal_action', 'pedpedal_visibility', 'pedpedal_location', 'bac_result', 'bac_result value', 'cell_phone_use']
+    cols_vehicles = ['crash_record_id', 'unit_type', 'num_passengers', 'vehicle_year', 'vehicle_defect', 'vehicle_type', 'vehicle_use', 'maneuver', 'occupant_cnt']
     
     cols_list = [cols_crashes, cols_people, cols_vehicles]
     
@@ -34,21 +34,5 @@ def column_mask(dfs):
 # )
 # data['time_of_crash'].iloc[111]
 
-
-# def basic_info(data):
-#     print("Dataset shape is: ", data.shape)
-#     print("Dataset size is: ", data.size)
-#     print("Dataset columns are: ", data.columns)
-#     print("Dataset info is: ", data.info())
-#     categorical = []
-#     numerical = []
-#     for i in data.columns:
-#         if data[i].dtype == object:
-#             categorical.append(i)
-#         else:
-#             numerical.append(i)
-#     print("Categorical variables are:\n ", categorical)
-#     print("Numerical variables are:\n ", numerical)
-#     return categorical, numerical
 
 

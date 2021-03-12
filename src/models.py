@@ -1,9 +1,16 @@
-
-
-X_model_features = ['IS_A_HOLIDAY', 'STREET_NO', 'DAMAGE', 'ROADWAY_SURFACE_COND', 'POSTED_SPEED_LIMIT', 
-                    'WEATHER_CONDITION', 'LIGHTING_CONDITION']
-
-X = crashes[X_model_features]
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import BaggingClassifier, RandomForestClassifier
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import roc_auc_score, classification_report
+from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.model_selection import StratifiedKFold
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+import pandas as pd
+import numpy as np
 
 class Preprocessor():
     '''
@@ -20,7 +27,7 @@ class Preprocessor():
     import numpy as np
     from imblearn.over_sampling import SMOTE
     from imblearn.under_sampling import RandomUnderSampler
-    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
     
     def __init__(self, target_col_name, df=pd.DataFrame([]), thresh=0.4, 
                  train_sizes=[.5, .6, .75, .8], focus_list=None):
@@ -127,101 +134,224 @@ class Preprocessor():
         
         return smoted_data
 
+class MasterModeler():
+    '''
+    Takes in a preprocessed dataset dictionary, places it in a pipeline, and gridsearch through 
+    various hyperparameters. Returns diagnostics within the dataset dictionary.
+    
+    Params:
+    classifiers - dictionary of classifier instances (ex: {'logreg' : [LogisticRegression(), grid]})
+    '''
+    from sklearn.linear_model import LogisticRegression, ElasticNet
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.ensemble import BaggingClassifier, RandomForestClassifier
+    from sklearn.preprocessing import StandardScaler, LabelBinarizer
+    from sklearn.model_selection import GridSearchCV, cross_val_score 
+    from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, \
+                                mean_squared_error, mean_absolute_error, roc_auc_score, \
+                                classification_report
+    
+    def __init__(self, classifier_dict={'classifier': LogisticRegression(), 'grid': {}}):
+        # Inherit stuff from Preprocessor()
+        self.classifier_dict = classifier_dict
+    
+    def model_pipe(self, data_list):
+        '''
+        Params:
+        continuous_cols - pandas DataFrame containing all continuous columns
+        categorical cols - pandas DataFrame containing all categorical columns
+        '''
+        adding_fit_objs = []
+        for dataset in data_list:                
+            clf = self.classifier_dict['classifier']
+            grid = self.classifier_dict['grid']
+
+            gs = GridSearchCV(clf, grid, cv=3)
+            fit_obj_even = gs.fit(dataset['train']['SMOTE_even_split']['X'].dropna(), dataset['train']['SMOTE_even_split']['y'].dropna())
+            fit_obj_under = gs.fit(dataset['train']['SMOTE_undersampled']['X'].dropna(), dataset['train']['SMOTE_undersampled']['y'].dropna())
+            fit_obj_ns = gs.fit(dataset['train']['no_SMOTE']['X'].dropna(), dataset['train']['no_SMOTE']['y'].dropna())
+            
+            adding_fit_objs.append({'train': {'SMOTE_even_split': {'X': dataset['train']['SMOTE_even_split']['X'], 'y': dataset['train']['SMOTE_even_split']['y'], 'fit_obj': fit_obj_even},
+                               'SMOTE_undersampled': {'X': dataset['train']['SMOTE_undersampled']['X'], 'y': dataset['train']['SMOTE_undersampled']['X'], 'fit_obj': fit_obj_under},
+                                'no_SMOTE' : {'X': dataset['train']['no_SMOTE']['X'], 'y': dataset['train']['no_SMOTE']['y'], 'fit_obj': fit_obj_ns}},
+                               'test': {'X': dataset['test']['X'], 'y': dataset['test']['y']},
+                               'train_size': dataset['train_size']})
+            
+        return adding_fit_objs
+
+    def validate_models(self, fitted_data_list, folds=3):
+        from sklearn.model_selection import cross_val_score
+        
+        with_scores = []
+        for dataset in fitted_data_list:
+            fit_obj_even = dataset['train']['SMOTE_even_split']['fit_obj']
+            fit_obj_under = dataset['train']['SMOTE_undersampled']['fit_obj']
+            fit_obj_ns = dataset['train']['no_SMOTE']['fit_obj']
+            
+            acc_even = cross_val_score(fit_obj_even, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='accuracy')
+            
+            prec_even = cross_val_score(fit_obj_even, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='precision')
+            
+            rec_even = cross_val_score(fit_obj_even, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='recall')
+            
+            acc_under = cross_val_score(fit_obj_under, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='accuracy')
+            
+            prec_under = cross_val_score(fit_obj_under, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='precision')
+            
+            rec_under = cross_val_score(fit_obj_under, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='recall')
+            
+            acc_ns = cross_val_score(fit_obj_ns, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='accuracy')
+            
+            prec_ns = cross_val_score(fit_obj_ns, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='accuracy')
+            
+            rec_ns = cross_val_score(fit_obj_ns, dataset['test']['X'], 
+                                       dataset['test']['y'], cv=folds, scoring='accuracy')
+            
+            
+            with_scores.append(
+                            {'train': {'SMOTE_even_split': {'scores': {'acc': acc_even,'prec': prec_even,'rec': rec_even}},
+                               'SMOTE_undersampled': {'scores': {'acc': acc_under,'prec': prec_under,'rec': rec_under}},
+                                      'no_SMOTE': {'scores': {'acc': acc_ns,'prec': prec_ns,'rec': rec_ns}}},
+                             'train_size': dataset['train_size']}
+            )
+        return with_scores
+            
+# skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
+
+def kfold_validation(X_train, y_train):
+    from sklearn.model_selection import KFold
+    from sklearn.metrics import recall_score
+
+    kf = KFold()
+
+    val_recall = []
+
+    for train_ind, val_ind in kf.split(X_train, y_train):
+        x_t = X_train.iloc[train_ind]
+        y_t = y_train.iloc[train_ind]
+
+        ss = StandardScaler()
+        ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
+
+        cont = ['TIME']
+        cat_cols = list(tts_data[0]['train']['X'].drop(labels=['VEHICLE_ID', 'TIME'], axis=1).columns)
+
+        scaled = ss.fit_transform(x_t[cont])
+        dummies = ohe.fit_transform(x_t[cat_cols])
+
+        x_t = pd.concat([pd.DataFrame(scaled, columns=cont), 
+                                  pd.DataFrame(dummies, columns=ohe.get_feature_names())], axis=1)
+
+
+        x_val = X_train.iloc[val_ind]
+        y_val = y_train.iloc[val_ind]
+
+        sc = ss.transform(x_val[cont])
+        dums = ohe.transform(x_val[cat_cols])
+
+        x_val = pd.concat([pd.DataFrame(sc, columns=cont), 
+                                  pd.DataFrame(dums, columns=ohe.get_feature_names())], axis=1)
+
+        lr = LogisticRegression()
+
+        lr.fit(x_t, y_t)
+
+        val_recall.append(recall_score(y_val, lr.predict(x_val)))
+
+
 ######################## CHRISTOS ####################
+
+# from sklearn import preprocessing
+# lbl = preprocessing.LabelEncoder()
+# df['WEATHER_CONDITION'] = lbl.fit_transform(df['WEATHER_CONDITION'].astype(str))
+# df['LIGHTING_CONDITION'] = lbl.fit_transform(df['LIGHTING_CONDITION'].astype(str))
+# df['ROADWAY_SURFACE_COND'] = lbl.fit_transform(df['ROADWAY_SURFACE_COND'].astype(str))
+# df['ROAD_DEFECT'] = lbl.fit_transform(df['ROAD_DEFECT'].astype(str))
+# df['STREET_DIRECTION'] = lbl.fit_transform(df['STREET_DIRECTION'].astype(str))
+
+# X = df.drop('target-injuries', axis=1)
+# y = df['target-injuries']
+
+
+# import warnings
+# warnings.filterwarnings('ignore')
+# import numpy as np
+# import pandas as pd
+# from datetime import datetime
+# from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+# from sklearn.metrics import roc_auc_score
+# from sklearn.model_selection import StratifiedKFold
+# from xgboost import XGBClassifier
+# import xgboost as xgb
+
+# print('\n All results:')
+# print(random_search.cv_results_)
+# print('\n Best estimator:')
+# print(random_search.best_estimator_)
+# print(random_search.best_score_)
+# print('\n Best hyperparameters:')
+# print(random_search.best_params_)
+# results = pd.DataFrame(random_search.cv_results_)
+# results.to_csv('xgb-random-grid-search-results-01.csv', index=False)
+
+
+# skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
+
+# random_search = RandomizedSearchCV(xgb,
+#                                    param_distributions=params,
+#                                    n_iter=param_comb,
+#                                    scoring='roc_auc',
+#                                    n_jobs=4,
+#                                    cv=skf.split(X_train,Y_train),
+#                                    verbose=3,
+#                                    random_state=1001 )
+
+# random_search.fit(X_train, Y_train)
+
+# from sklearn.model_selection import KFold
+# from sklearn.metrics import recall_score
+
+# kf = KFold()
+
+# val_recall = []
+
+# for train_ind, val_ind in kf.split(X_train, y_train):
+#     x_t = X_train.iloc[train_ind]
+#     y_t = y_train.iloc[train_ind]
     
-import pandas as pd
-df = pd.read_csv('traffic_crashes_chicago.csv')
-
-df = df.drop(['CRASH_RECORD_ID', 'RD_NO', 'CRASH_DATE_EST_I', 'CRASH_DATE', 'TRAFFIC_CONTROL_DEVICE', 'DEVICE_CONDITION', 'FIRST_CRASH_TYPE', 'TRAFFICWAY_TYPE', 'ALIGNMENT', 'REPORT_TYPE', 'CRASH_TYPE', 'INTERSECTION_RELATED_I', 'NOT_RIGHT_OF_WAY_I', 'HIT_AND_RUN_I', 'DAMAGE', 'DATE_POLICE_NOTIFIED', 'PRIM_CONTRIBUTORY_CAUSE', 'SEC_CONTRIBUTORY_CAUSE', 'STREET_NAME', 'BEAT_OF_OCCURRENCE', 'PHOTOS_TAKEN_I', 'STATEMENTS_TAKEN_I', 'DOORING_I', 'WORK_ZONE_I', 'WORK_ZONE_TYPE', 'WORKERS_PRESENT_I', 'MOST_SEVERE_INJURY', 'STREET_NO', 'INJURIES_FATAL', 'INJURIES_INCAPACITATING', 'INJURIES_NON_INCAPACITATING', 'INJURIES_REPORTED_NOT_EVIDENT', 'INJURIES_NO_INDICATION', 'INJURIES_UNKNOWN', 'LATITUDE', 'LONGITUDE',  'LOCATION', 'LANE_CNT'], axis=1)
-df['STREET_DIRECTION'].fillna(method='ffill', inplace=True)
-df['target-injuries'] = df['INJURIES_TOTAL'] > 0
-df.drop('INJURIES_TOTAL', axis=1, inplace=True)
-
-from sklearn import preprocessing
-lbl = preprocessing.LabelEncoder()
-df['WEATHER_CONDITION'] = lbl.fit_transform(df['WEATHER_CONDITION'].astype(str))
-df['LIGHTING_CONDITION'] = lbl.fit_transform(df['LIGHTING_CONDITION'].astype(str))
-df['ROADWAY_SURFACE_COND'] = lbl.fit_transform(df['ROADWAY_SURFACE_COND'].astype(str))
-df['ROAD_DEFECT'] = lbl.fit_transform(df['ROAD_DEFECT'].astype(str))
-df['STREET_DIRECTION'] = lbl.fit_transform(df['STREET_DIRECTION'].astype(str))
-
-X = df.drop('target-injuries', axis=1)
-y = df['target-injuries']
-
-
-import warnings
-warnings.filterwarnings('ignore')
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
-from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import StratifiedKFold
-from xgboost import XGBClassifier
-import xgboost as xgb
-
-
-from sklearn.model_selection import train_test_split
-X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.2)
-D_train = xgb.DMatrix(X_train, label=Y_train)
-D_test  = xgb.DMatrix(X_test, label=Y_test)
-
-params = {
-        'min_child_weight': [5,6,7,8],
-        'gamma'           : [1.1,1.2,1.3],
-        'subsample'       : [.7,.8,.9],
-        'max_depth'       : [10,11,12,13],
-        'eta'             : [.2,.3,.4],
-        'colsample_bytree': [.4,.5,.6]        
-        }
-
-
-xgb = XGBClassifier(learning_rate=0.02,
-                    n_estimators=600,
-                    objective='binary:logistic',
-                    silent=True,
-                    nthread=1,
-                    tree_method= 'gpu_hist'
-#                     verbosity=0,
-#                    scale_pos_weight = 7
-                   )
-
-print('\n All results:')
-print(random_search.cv_results_)
-print('\n Best estimator:')
-print(random_search.best_estimator_)
-print('\n Best normalized gini score for %d-fold search with %d parameter combinations:' % (folds, param_comb))
-print(random_search.best_score_)
-#       * 2 - 1)
-print('\n Best hyperparameters:')
-print(random_search.best_params_)
-results = pd.DataFrame(random_search.cv_results_)
-results.to_csv('xgb-random-grid-search-results-01.csv', index=False)
-
-
-skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
-
-random_search = RandomizedSearchCV(xgb,
-                                   param_distributions=params,
-                                   n_iter=param_comb,
-                                   scoring='roc_auc',
-                                   n_jobs=4,
-                                   cv=skf.split(X_train,Y_train),
-                                   verbose=3,
-                                   random_state=1001 )
-
-start_time = timer(None)
-random_search.fit(X_train, Y_train)
-timer(start_time)
+#     ss = StandardScaler()
+#     ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
     
-################## MARCOS ##########################  
-kf = KFold()
-precision_scores = []
-for trained_indices, val_indices in kf.split(X, y):
-    X_t = X.iloc[trained_indices]
-    X_val = X.iloc[val_indices]
-    y_t = y.iloc[trained_indices]
-    y_val = y.iloc[val_indices]
-    ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
-    X_t_cat = ohe.fit_transform(X_t.select_dtypes(include='object'))
-    X_t_num = ohe.fit_transform(X_t.select_dtypes(exclude='object'))
+#     cont = ['TIME']
+#     cat_cols = list(tts_data[0]['train']['X'].drop(labels=['VEHICLE_ID', 'TIME'], axis=1).columns)
+    
+#     scaled = ss.fit_transform(x_t[cont])
+#     dummies = ohe.fit_transform(x_t[cat_cols])
+    
+#     x_t = pd.concat([pd.DataFrame(scaled, columns=cont), 
+#                               pd.DataFrame(dummies, columns=ohe.get_feature_names())], axis=1)
+    
+    
+#     x_val = X_train.iloc[val_ind]
+#     y_val = y_train.iloc[val_ind]
+    
+#     sc = ss.transform(x_val[cont])
+#     dums = ohe.transform(x_val[cat_cols])
+    
+#     x_val = pd.concat([pd.DataFrame(sc, columns=cont), 
+#                               pd.DataFrame(dums, columns=ohe.get_feature_names())], axis=1)
+    
+#     lr = LogisticRegression()
+    
+#     lr.fit(x_t, y_t)
+    
+#     val_recall.append(recall_score(y_val, lr.predict(x_val)))
+    

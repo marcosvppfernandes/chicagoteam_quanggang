@@ -6,15 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-# Large files
-traffic_crashes_chicago.csv
-traffic_crashes_people.csv
-traffic_crashes_vehicles.csv
-
-data/traffic_crashes_chicago.csv
-data/traffic_crashes_people.csv
-data/traffic_crashes_vehicles.csv
-
 # Distribution / packaging
 .Python
 build/

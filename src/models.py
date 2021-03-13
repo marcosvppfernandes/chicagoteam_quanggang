@@ -65,7 +65,8 @@ class Preprocessor():
         for xy in new_data_list:
             for size in self.train_sizes:
                 X_train, X_test, y_train, y_test = train_test_split(xy['X'], xy['y'],
-                                                               stratify=xy['y'], train_size=size)
+                                                               stratify=xy['y'], train_size=size,
+                                                                   random_state=1001)
                 
                 tts_data.append({'train': {'X': pd.DataFrame(X_train, columns=xy['X'].columns), 
                                            'y': y_train}, 
@@ -103,8 +104,8 @@ class Preprocessor():
                 X_test = pd.concat([pd.DataFrame(X_te_cont, columns=continuous_cols), 
                                      pd.DataFrame(X_te_cats, columns=ohe.get_feature_names())], axis=1)
             else:
-                X_train = ohe.fit_transform(dataset['train']['X'][categorical_cols])
-                X_test = ohe.transform(dataset['test']['X'][categorical_cols])
+                X_train = pd.DataFrame(ohe.fit_transform(dataset['train']['X'][categorical_cols]), columns=ohe.get_feature_names())
+                X_test = pd.DataFrame(ohe.transform(dataset['test']['X'][categorical_cols]), columns=ohe.get_feature_names())
             
             prepped_data.append(
                 {'train': {'X': X_train, 'y': dataset['train']['y']}, 
@@ -226,11 +227,11 @@ class MasterModeler():
             )
         return with_scores
             
-# skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
+####################### K FOLD VAL FUNCS ######################
 
 def kfold_validation(X_train, y_train, classifier, 
                      continuous_cols, categorical_cols, smote=False,
-                    minority_size=0.7, majority_reduce=0.7):
+                     minority_size=0.7, majority_reduce=0.7):
     from sklearn.model_selection import StratifiedKFold
     from sklearn.metrics import recall_score, precision_score, accuracy_score, roc_auc_score
 
@@ -296,6 +297,55 @@ def kfold_validation(X_train, y_train, classifier,
             roc_auc.append(roc_auc_score(y_val, clf.predict(x_val)))
             
     return val_recall, val_prec, val_acc, roc_auc, clf
+
+
+def kfold_xgboost(X_train, y_train, classifier, 
+                     continuous_cols, categorical_cols, smote=False,
+                     minority_size=0.7, majority_reduce=0.7):
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.metrics import classification_report
+
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1001)
+
+    reports = []
+
+    for train_ind, val_ind in skf.split(X_train, y_train):
+        x_t = X_train.iloc[train_ind]
+        y_t = y_train.iloc[train_ind]
+
+
+        x_val = X_train.iloc[val_ind]
+        y_val = y_train.iloc[val_ind]
+        
+        
+        if smote==True:
+            oversample = SMOTE(sampling_strategy=minority_size)
+            undersample = RandomUnderSampler(sampling_strategy=majority_reduce)
+            
+            X_part_over, y_part_over = oversample.fit_resample(x_t, y_t)
+
+            X_under, y_under = undersample.fit_resample(X_part_over, y_part_over)
+            
+            clf = classifier
+
+            clf.fit(X_under, y_under)
+            
+            y_pred = clf.predict(x_val)
+
+            reports.append(classification_report(y_val, y_pred))
+            
+        else:
+            clf = classifier
+
+            clf.fit(x_t, y_t)
+            
+            y_pred = clf.predict(x_val)
+
+            reports.append(classification_report(y_val, y_pred))
+            
+    return reports
+
+############################# MODEL MASKS #############################
 
 def model_mask_binary(crashes):
     
@@ -495,8 +545,10 @@ def model_mask_ternary(crashes, people, vehicles):
     ############### FUNC RETURN
     return model_data, categoricalz, numericalz
 
-def show_feature_importances(clf):
-    '''Takes in XGBoost clf only'''
+def show_feature_importances(clf, X):
+    '''Takes in XGBoost clf only; X is X_train/test dataframe'''
+    from xgboost import XGBClassifier
+    
     listy=clf.get_booster().feature_names
     listy=(X.columns)
     listp=clf.get_booster().get_score(importance_type = 'gain')
@@ -507,5 +559,5 @@ def show_feature_importances(clf):
         listp[k] = [v, listy[counter]]
         counter += 1
         
-    return listp
+    return sorted(list(listp.values()))
     

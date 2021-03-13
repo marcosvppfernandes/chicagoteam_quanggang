@@ -422,6 +422,22 @@ def seatbelt_used(people):
     ax.set_xticklabels(['Unknown', 'No', 'Yes'])
     sns.despine(left=True, bottom=True)
 
+def vehicle_defect(vehicles):
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    plt.style.use('seaborn')
+    sns.set_theme(style="whitegrid")
+    sns.set_color_codes("muted")    
+    
+    
+    vehicles.vehicle_defect.value_counts().sort_values(ascending=False)[3:].plot.bar(color='tab:purple')
+    plt.title('Distribution of Vehicle Defects (if present)', size=15)
+    plt.ylabel('Number of Crashes')
+    plt.xlabel('Type of Vehicle Defect')
+    
+    
 def class_imbalance(people):
     import numpy as np
     import matplotlib.pyplot as plt

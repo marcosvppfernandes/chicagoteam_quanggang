@@ -124,10 +124,17 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
 ********
 ### First Simple Model
 
+![fsm](img/fsm.png)
 
 
 ### FINAL MODEL
 
-![test](img/finalmodeltestcm.png)
+![test](img/finalmodel.png)
 
-To access all of our sources, or for more details about our process, see final_notebook.ipynb or presentation.pdf.
+* `UNIT_TYPE` - DISABLED VEHICLE (1092)
+* `VEHICLE_DEFECT` - BRAKES (23.5)
+* `VEHICLE_TYPE` - SINGLE UNIT TRUCK WITH TRAILER (15.96)
+* `VEHICLE_TYPE` - RECREATIONAL OFF-HIGHWAY VEHICLE (15.5)
+* `VEHICLE_DEFECT` - SIGNALS (14.66)
+
+To access all of our sources, or for more details about our process, see `final_notebook.ipynb` or `presentation.pdf`.

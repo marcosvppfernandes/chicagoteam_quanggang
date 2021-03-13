@@ -124,19 +124,24 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
 ********
 ### First Simple Model
 
+**Recall**: 22%
+
 ![fsm](img/fsm.png)
 
 
 ### FINAL MODEL
 
-![test](img/finalmodel.png)
+**Recall**: 84%
+
+![test](img/finalmodeltestcm.png)
 
 #### Top 5 Features - Final Model (by Gain Metric)
 
-* `UNIT_TYPE` - DISABLED VEHICLE (1092)
-* `VEHICLE_DEFECT` - BRAKES (23.5)
-* `VEHICLE_TYPE` - SINGLE UNIT TRUCK WITH TRAILER (15.96)
-* `VEHICLE_TYPE` - RECREATIONAL OFF-HIGHWAY VEHICLE (15.5)
-* `VEHICLE_DEFECT` - SIGNALS (14.66)
+* `UNIT_TYPE` - DISABLED VEHICLE (810)
+* `DRIVER_ACTION` - DISTRACTION - FROM OUTSIDE VEHICLE (181)
+* `PERSON_TYPE` - DRIVER (11)
+* `VEHICLE_DEFECT` - ENGINE/MOTOR (8.71)
+* `VEHICLE_DEFECT` - WHEELS (8.4)
+
 
 To access all of our sources, or for more details about our process, see `final_notebook.ipynb` or `presentation.pdf`.

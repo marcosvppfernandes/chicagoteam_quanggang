@@ -91,16 +91,20 @@ class Preprocessor():
         
         for dataset in tts_data:
             
-            X_tr_cont = ss.fit_transform(dataset['train']['X'][continuous_cols])
-            X_tr_cats = ohe.fit_transform(dataset['train']['X'][categorical_cols])
-            
-            X_train = pd.concat([pd.DataFrame(X_tr_cont, columns=continuous_cols), 
-                                 pd.DataFrame(X_tr_cats, columns=ohe.get_feature_names())], axis=1)
-            
-            X_te_cont = ss.transform(dataset['test']['X'][continuous_cols])
-            X_te_cats = ohe.transform(dataset['test']['X'][categorical_cols])
-            X_test = pd.concat([pd.DataFrame(X_te_cont, columns=continuous_cols), 
-                                 pd.DataFrame(X_te_cats, columns=ohe.get_feature_names())], axis=1)
+            if len(continuous_cols) > 0:
+                X_tr_cont = ss.fit_transform(dataset['train']['X'][continuous_cols])
+                X_tr_cats = ohe.fit_transform(dataset['train']['X'][categorical_cols])
+
+                X_train = pd.concat([pd.DataFrame(X_tr_cont, columns=continuous_cols), 
+                                     pd.DataFrame(X_tr_cats, columns=ohe.get_feature_names())], axis=1)
+
+                X_te_cont = ss.transform(dataset['test']['X'][continuous_cols])
+                X_te_cats = ohe.transform(dataset['test']['X'][categorical_cols])
+                X_test = pd.concat([pd.DataFrame(X_te_cont, columns=continuous_cols), 
+                                     pd.DataFrame(X_te_cats, columns=ohe.get_feature_names())], axis=1)
+            else:
+                X_train = ohe.fit_transform(dataset['train']['X'][categorical_cols])
+                X_test = ohe.transform(dataset['test']['X'][categorical_cols])
             
             prepped_data.append(
                 {'train': {'X': X_train, 'y': dataset['train']['y']}, 
@@ -291,7 +295,7 @@ def kfold_validation(X_train, y_train, classifier,
             val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
             roc_auc.append(roc_auc_score(y_val, clf.predict(x_val)))
             
-    return val_recall, val_prec, val_acc, roc_auc
+    return val_recall, val_prec, val_acc, roc_auc, clf
 
 def model_mask_binary(crashes):
     
@@ -329,93 +333,179 @@ def model_mask_binary(crashes):
     
     return crash_mod
 
-
+def model_mask_ternary(crashes, people, vehicles):
+    import pandas as pd
+    import numpy as np
+    from datetime import datetime
+    from dateutil import parser
+    from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
     
-######################## CHRISTOS ####################
-
-# from sklearn import preprocessing
-# lbl = preprocessing.LabelEncoder()
-# df['WEATHER_CONDITION'] = lbl.fit_transform(df['WEATHER_CONDITION'].astype(str))
-# df['LIGHTING_CONDITION'] = lbl.fit_transform(df['LIGHTING_CONDITION'].astype(str))
-# df['ROADWAY_SURFACE_COND'] = lbl.fit_transform(df['ROADWAY_SURFACE_COND'].astype(str))
-# df['ROAD_DEFECT'] = lbl.fit_transform(df['ROAD_DEFECT'].astype(str))
-# df['STREET_DIRECTION'] = lbl.fit_transform(df['STREET_DIRECTION'].astype(str))
-
-# X = df.drop('target-injuries', axis=1)
-# y = df['target-injuries']
-
-
-# import warnings
-# warnings.filterwarnings('ignore')
-# import numpy as np
-# import pandas as pd
-# from datetime import datetime
-# from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
-# from sklearn.metrics import roc_auc_score
-# from sklearn.model_selection import StratifiedKFold
-# from xgboost import XGBClassifier
-# import xgboost as xgb
-
-# print('\n All results:')
-# print(random_search.cv_results_)
-# print('\n Best estimator:')
-# print(random_search.best_estimator_)
-# print(random_search.best_score_)
-# print('\n Best hyperparameters:')
-# print(random_search.best_params_)
-# results = pd.DataFrame(random_search.cv_results_)
-# results.to_csv('xgb-random-grid-search-results-01.csv', index=False)
-
-
-# skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
-
-# random_search = RandomizedSearchCV(xgb,
-#                                    param_distributions=params,
-#                                    n_iter=param_comb,
-#                                    scoring='roc_auc',
-#                                    n_jobs=4,
-#                                    cv=skf.split(X_train,Y_train),
-#                                    verbose=3,
-#                                    random_state=1001 )
-
-# random_search.fit(X_train, Y_train)
-
-# from sklearn.model_selection import KFold
-# from sklearn.metrics import recall_score
-
-# kf = KFold()
-
-# val_recall = []
-
-# for train_ind, val_ind in kf.split(X_train, y_train):
-#     x_t = X_train.iloc[train_ind]
-#     y_t = y_train.iloc[train_ind]
+    '''must read in dataframes again'''
+    cr_cols_drop = ['CRASH_DATE_EST_I', 'LANE_CNT', 'INTERSECTION_RELATED_I', 'NOT_RIGHT_OF_WAY_I','HIT_AND_RUN_I','PHOTOS_TAKEN_I', 'STATEMENTS_TAKEN_I', 'DOORING_I', 'WORK_ZONE_I', 'WORK_ZONE_TYPE','WORKERS_PRESENT_I', 'LOCATION', 'RD_NO']
     
-#     ss = StandardScaler()
-#     ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
+    crashes = crashes.drop(labels=cr_cols_drop, axis=1)
     
-#     cont = ['TIME']
-#     cat_cols = list(tts_data[0]['train']['X'].drop(labels=['VEHICLE_ID', 'TIME'], axis=1).columns)
+    crashes.dropna(inplace=True)
     
-#     scaled = ss.fit_transform(x_t[cont])
-#     dummies = ohe.fit_transform(x_t[cat_cols])
+    crashes['INJURIES_FATAL'] = np.where(crashes['INJURIES_FATAL']>0, 1, 0)
     
-#     x_t = pd.concat([pd.DataFrame(scaled, columns=cont), 
-#                               pd.DataFrame(dummies, columns=ohe.get_feature_names())], axis=1)
+    crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='BLOWING SNOW', 'SNOW', crashes.WEATHER_CONDITION)
     
+    crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='FREEZING RAIN/DRIZZLE', 'RAIN', crashes.WEATHER_CONDITION)
     
-#     x_val = X_train.iloc[val_ind]
-#     y_val = y_train.iloc[val_ind]
+    crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='FOG/SMOKE/HAZE', 'OTHER', crashes.WEATHER_CONDITION)
     
-#     sc = ss.transform(x_val[cont])
-#     dums = ohe.transform(x_val[cat_cols])
+    crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='SLEET/HAIL', 'OTHER', crashes.WEATHER_CONDITION)
     
-#     x_val = pd.concat([pd.DataFrame(sc, columns=cont), 
-#                               pd.DataFrame(dums, columns=ohe.get_feature_names())], axis=1)
+    crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='BLOWING SAND, SOIL, DIRT', 'OTHER', crashes.WEATHER_CONDITION)
     
-#     lr = LogisticRegression()
+    crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='SEVERE CROSS WIND GATE', 'OTHER', crashes.WEATHER_CONDITION)
     
-#     lr.fit(x_t, y_t)
+    # Let's bin the speed limit in 9 groups, the last one being 45 miles/hour or above
+    crashes.POSTED_SPEED_LIMIT = pd.cut(crashes.POSTED_SPEED_LIMIT,[0, 5, 10, 15, 20, 25, 30, 35, 40, 45], precision=0, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8])
     
-#     val_recall.append(recall_score(y_val, lr.predict(x_val)))
+    crashes['MOST_SEVERE_INJURY'] = np.where(crashes['MOST_SEVERE_INJURY']=='REPORTED, NOT EVIDENT',
+                                         'NONINCAPACITATING INJURY', crashes['MOST_SEVERE_INJURY'])
+    
+    crashes['MOST_SEVERE_INJURY'] = np.where(crashes['MOST_SEVERE_INJURY']=='FATAL',
+                                         'INCAPACITATING INJURY', crashes['MOST_SEVERE_INJURY'])
+    
+    crashes['MOST_SEVERE_INJURY'] = np.where(crashes['MOST_SEVERE_INJURY']=='INCAPACITATING INJURY','INCAPACITATING INJURY/FATAL', crashes['MOST_SEVERE_INJURY'])
+    
+    crashes['DATE_ACCIDENT']= pd.to_datetime(crashes['CRASH_DATE'], format='%m/%d/%Y %I:%M:%S %p')
+    
+    holidays = pd.tseries.holiday.USFederalHolidayCalendar().holidays(start='2012', end='2022').to_pydatetime()
+    
+    holidays_date = [holiday.date() for holiday in holidays]
+    
+    def isitaholiday(date):
+        ''' super useful function'''
+        if date.date() in holidays_date:
+            return 1
+        else: 
+            return 0
+    
+    crashes['IS_A_HOLIDAY'] = crashes['DATE_ACCIDENT'].apply(isitaholiday)
+    
+    crashes['HOLIDAY_NAME'] = crashes['DATE_ACCIDENT'].apply(isitaholiday)
+    
+    crashes.drop(['CRASH_DATE'], axis = 1, inplace = True)
+    
+    people = people.drop(columns=['CELL_PHONE_USE', 'BAC_RESULT VALUE', 'PEDPEDAL_LOCATION', 'PEDPEDAL_VISIBILITY',
+                              'EMS_RUN_NO', 'EMS_AGENCY', 'HOSPITAL', 'DRIVERS_LICENSE_CLASS', 
+                              'DRIVERS_LICENSE_STATE', 'ZIPCODE', 'SEAT_NO', 'PEDPEDAL_ACTION'])
+    
+    people.dropna(inplace=True)
+    
+    vehicles = vehicles.drop(columns=['NUM_PASSENGERS', 'CMRC_VEH_I', 'TOWED_I', 'FIRE_I', 'EXCEED_SPEED_LIMIT_I', 
+                                  'TOWED_BY', 'TOWED_TO', 'AREA_00_I', 'AREA_01_I', 'AREA_02_I', 'AREA_03_I', 
+                                  'AREA_04_I', 'AREA_05_I', 'AREA_06_I', 'AREA_07_I', 'AREA_08_I', 'AREA_09_I', 
+                                  'AREA_10_I', 'AREA_11_I', 'AREA_12_I', 'AREA_99_I', 'CMV_ID', 'USDOT_NO', 'CCMC_NO', 
+                                  'ILCC_NO', 'COMMERCIAL_SRC', 'GVWR', 'CARRIER_NAME', 'CARRIER_STATE', 'CARRIER_CITY',
+                                  'HAZMAT_PLACARDS_I', 'HAZMAT_NAME', 'UN_NO', 'HAZMAT_PRESENT_I', 'HAZMAT_REPORT_I',
+                                  'HAZMAT_REPORT_NO', 'MCS_REPORT_I', 'MCS_REPORT_NO', 'HAZMAT_VIO_CAUSE_CRASH_I',
+                                  'MCS_VIO_CAUSE_CRASH_I', 'IDOT_PERMIT_NO', 'WIDE_LOAD_I', 'TRAILER1_WIDTH',
+                                  'TRAILER2_WIDTH', 'TRAILER1_LENGTH', 'TRAILER2_LENGTH', 'TOTAL_VEHICLE_LENGTH',
+                                  'AXLE_CNT', 'VEHICLE_CONFIG', 'CARGO_BODY_TYPE', 'LOAD_TYPE', 'HAZMAT_OUT_OF_SERVICE_I',
+                                  'MCS_OUT_OF_SERVICE_I', 'HAZMAT_CLASS', 'LIC_PLATE_STATE'])
+    
+    vehicles.dropna(inplace=True)
+    
+    vehicles = vehicles.drop(columns=['RD_NO', 'VEHICLE_ID', 'CRASH_DATE'])
+    
+    inner_merged_total = pd.merge(vehicles, crashes, on=['CRASH_RECORD_ID'])
+    
+    inner_merged_total = pd.merge(inner_merged_total, people, on=['CRASH_RECORD_ID'])
+    
+    df = inner_merged_total.sort_values(by=['MOST_SEVERE_INJURY'], ascending=False)
+    
+    df = df[118131:]
+    
+    df['MOST_SEVERE_INJURY'] = np.where(df['MOST_SEVERE_INJURY']=='NO INDICATION OF INJURY',
+                                         'aNO INDICATION OF INJURY', df['MOST_SEVERE_INJURY'])
+    
+    df = df.sort_values(by=['MOST_SEVERE_INJURY'], ascending=False)
+    
+    df = df[845359:]
+    
+    df['MOST_SEVERE_INJURY'] = np.where(df['MOST_SEVERE_INJURY']=='aNO INDICATION OF INJURY',
+                                         'NO INDICATION OF INJURY', df['MOST_SEVERE_INJURY'])
+    
+    df_a = df
+    
+    def basic_info(data):
+        categorical = []
+        numerical = []
+        for i in data.columns:
+            if data[i].dtype == object:
+                categorical.append(i)
+            else:
+                numerical.append(i)
+        return categorical, numerical
+
+    categorical, numerical = basic_info(df_a)
+    
+    df_a2 = df_a.copy(deep = True)
+    
+    df1 = df.drop(columns=['MOST_SEVERE_INJURY'])
+    
+    categoricalx, numericalx = basic_info(df1)
+    
+    df3 = df1[categoricalx]
+            
+    df4 = df3.drop(columns=['CRASH_RECORD_ID','MAKE','MODEL','DATE_POLICE_NOTIFIED','STREET_NAME','PERSON_ID','RD_NO','CRASH_DATE','CITY'])
+    
+    categoricalx, numericalx = basic_info(df4)
+    
+    df_a2 = df_a2.drop(columns=['CRASH_RECORD_ID', 'MODEL', 'DATE_POLICE_NOTIFIED', 'STREET_NAME', 'PERSON_ID', 'RD_NO', 'CRASH_DATE', 'CITY', 'STATE'])
+    
+    df_a2 = df_a2.drop(columns=['CRASH_UNIT_ID','MAKE','VEHICLE_YEAR','STREET_NO','BEAT_OF_OCCURRENCE','LATITUDE','LONGITUDE','DATE_ACCIDENT','VEHICLE_ID'])
+    
+    categorical2 = df_a2.columns
+    
+    # may need to fix
+    df_a4 = df_a2.drop(columns=['UNIT_TYPE','VEHICLE_DEFECT','VEHICLE_TYPE','VEHICLE_USE','TRAVEL_DIRECTION','MANEUVER', 'FIRST_CONTACT_POINT', 'TRAFFIC_CONTROL_DEVICE','DEVICE_CONDITION','WEATHER_CONDITION','LIGHTING_CONDITION','FIRST_CRASH_TYPE','TRAFFICWAY_TYPE','ALIGNMENT','ROADWAY_SURFACE_COND','ROAD_DEFECT','REPORT_TYPE','CRASH_TYPE','DAMAGE','PRIM_CONTRIBUTORY_CAUSE','SEC_CONTRIBUTORY_CAUSE','STREET_DIRECTION', 'MOST_SEVERE_INJURY'])
+    
+    ds = df.drop(columns=['MOST_SEVERE_INJURY'])
+    
+    deletar = []
+    for x in ds.columns:
+        if len(ds[x].value_counts()) > 50:
+                deletar.append(x)
+                
+    ds1 = ds.drop(columns=['CRASH_UNIT_ID','CRASH_RECORD_ID','MAKE','MODEL','VEHICLE_YEAR','DATE_POLICE_NOTIFIED','STREET_NO','STREET_NAME','BEAT_OF_OCCURRENCE','LATITUDE','LONGITUDE','DATE_ACCIDENT','PERSON_ID', 'RD_NO', 'VEHICLE_ID','CRASH_DATE','CITY','AGE'])
+    
+    ds1 = ds1.drop(columns=['INJURIES_TOTAL', 'INJURIES_FATAL', 'INJURIES_INCAPACITATING','INJURIES_NON_INCAPACITATING','INJURIES_REPORTED_NOT_EVIDENT','INJURIES_NO_INDICATION', 'INJURIES_UNKNOWN'])
+    
+    ds1 = ds1.drop(columns=['INJURY_CLASSIFICATION'])
+    
+    dfs = df
+    
+    dfs['MOST_SEVERE_INJURY'] = np.where(dfs['MOST_SEVERE_INJURY']=='NONINCAPACITATING INJURY', 0, dfs['MOST_SEVERE_INJURY'])
+    
+    dfs['MOST_SEVERE_INJURY'] = np.where(dfs['MOST_SEVERE_INJURY']=='NO INDICATION OF INJURY', 1, dfs['MOST_SEVERE_INJURY'])
+    
+    dfs['MOST_SEVERE_INJURY'] = np.where(dfs['MOST_SEVERE_INJURY']=='INCAPACITATING INJURY/FATAL', 2, dfs['MOST_SEVERE_INJURY'])
+    
+    col_mask = ['UNIT_TYPE', 'VEHICLE_DEFECT', 'VEHICLE_TYPE', 'VEHICLE_USE', 'TRAVEL_DIRECTION', 'MANEUVER', 'FIRST_CONTACT_POINT', 'TRAFFIC_CONTROL_DEVICE', 'DEVICE_CONDITION', 'WEATHER_CONDITION', 'LIGHTING_CONDITION', 'FIRST_CRASH_TYPE', 'TRAFFICWAY_TYPE', 'ALIGNMENT', 'ROADWAY_SURFACE_COND', 'ROAD_DEFECT', 'REPORT_TYPE', 'CRASH_TYPE', 'DAMAGE', 'PRIM_CONTRIBUTORY_CAUSE', 'SEC_CONTRIBUTORY_CAUSE', 'STREET_DIRECTION', 'PERSON_TYPE', 'STATE', 'SEX', 'SAFETY_EQUIPMENT', 'AIRBAG_DEPLOYED', 'EJECTION', 'DRIVER_ACTION', 'DRIVER_VISION', 'PHYSICAL_CONDITION', 'BAC_RESULT', 'MOST_SEVERE_INJURY']
+    
+    model_data = dfs[col_mask]
+    categoricalz, numericalz = basic_info(model_data)
+    
+    ############### FUNC RETURN
+    return model_data, categoricalz, numericalz
+
+def show_feature_importances(clf):
+    '''Takes in XGBoost clf only'''
+    listy=clf.get_booster().feature_names
+    listy=(X.columns)
+    listp=clf.get_booster().get_score(importance_type = 'gain')
+
+
+    counter = 0
+    for k,v in listp.items():
+        listp[k] = [v, listy[counter]]
+        counter += 1
+        
+    return listp
     

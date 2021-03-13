@@ -6,6 +6,7 @@ def crashes_by_month(crashes):
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
+    import pandas as pd
     crashes['crash_month'] = crashes['crash_date'].apply(lambda x: int(x[:2]))
 
     crash_no_inj = crashes[crashes['injuries_total'] == 0]
@@ -43,7 +44,7 @@ def crashes_by_hour(crashes):
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     crash_no_inj = crashes[crashes['injuries_total'] == 0]
     crash_inj    = crashes[crashes['injuries_total'] > 0]
 
@@ -78,7 +79,7 @@ def crashes_by_day(crashes):
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     import calendar
     crash_no_inj = crashes[crashes['injuries_total'] == 0]
     crash_inj    = crashes[crashes['injuries_total'] > 0]
@@ -110,11 +111,12 @@ def crashes_by_day(crashes):
 
 def crashes_by_age(people):
     import matplotlib.pyplot as plt
+    import numpy as np
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     drivers = people[people['person_type']=='DRIVER']
     
     conds = [((drivers['age']>=16)&(drivers['age']<=18)),
@@ -147,24 +149,16 @@ def crashes_by_age(people):
     drivers.age.value_counts().sort_index().iloc[1:].plot.bar(color='tab:purple')
     plt.title('Number of Crashes by Age Group')
     plt.xlabel('Age Group')
-    
-    
-def crashes_by_lighting_condition():
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    plt.style.use('seaborn')
-    sns.set_theme(style="whitegrid")
-    sns.set_color_codes("muted")
-
 
     
 def crashes_by_pedpedal_action(people):
     import matplotlib.pyplot as plt
+    import numpy as np
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     f, ax = plt.subplots(figsize=(12,8))
     sns.set_color_codes("muted")
     sns.barplot(x=people.pedpedal_action.value_counts().sort_values().values, 
@@ -180,27 +174,32 @@ def crashes_by_pedpedal_action(people):
     
 def crashes_by_damage(crashes):
     import matplotlib.pyplot as plt
+    import numpy as np
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     crashes.damage.value_counts().plot.bar(color='tab:purple')
     plt.title('Number of Crashes based on Crash Estimated Damage')
     plt.xlabel('Damage (Estimated by Reporting Officer)')
 
 def crashes_by_lighting_condition(crashes):
     import matplotlib.pyplot as plt
+    import numpy as np
     import seaborn as sns
+    import pandas as pd
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-                            crashes.lighting_condition.value_counts().sort_values(ascending=False).plot.bar(color='tab:purple')
+    vc = crashes.lighting_condition.value_counts()
+    vc.sort_values(ascending=False).plot.bar(color='tab:purple')
     plt.title('Number of Crashes based on Lighting Condition')
 
     
 def airbag_deployment(people):
     import pandas as pd
+    import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.style.use('seaborn')
@@ -244,6 +243,7 @@ def airbag_deployment(people):
 
 def crashes_by_sex(people):
     import pandas as pd
+    import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.style.use('seaborn')
@@ -279,13 +279,14 @@ def crashes_by_sex(people):
     sns.despine(left=True, bottom=True)
 
     
-def top_10_crash_sites():
+def top_10_crash_sites(crashes):
     import matplotlib.pyplot as plt
+    import numpy as np
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     fig, ax = plt.subplots(figsize=(10,6))
 
     street_names = crashes.street_name.value_counts(sort=True).index[:10]
@@ -299,13 +300,14 @@ def top_10_crash_sites():
     ax.set_ylabel('Street Name')
     
     
-def driver_vision():    
+def driver_vision(people):    
+    import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     conds = [(people['driver_vision']=='NOT OBSCURED'), 
              ((people['driver_vision']!='NOT OBSCURED')&(people['driver_vision']!='UNKNOWN'))]
     choices = ['N', 'Y']
@@ -341,13 +343,14 @@ def driver_vision():
     
     
 def driver_action(people):
+    import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
     
-    
+    import pandas as pd
     people_da = people[(people['driver_action']!='OTHER')&(people['driver_action']!='NONE')&(people['driver_action']!='UNKNOWN')]
 
     crash_no_inj = people_da[(people_da['injury_classification'] == 'NO INDICATION OF INJURY')|(people_da['injury_classification'] == 'REPORTED, NOT EVIDENT')]
@@ -379,12 +382,13 @@ def driver_action(people):
     
     
 def seatbelt_used(people):
+    import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     conds = [(people['safety_equipment']=='SAFETY BELT USED'), 
          (people['safety_equipment']=='SAFETY BELT NOT USED')]
     choices = ['Yes', 'No']
@@ -419,12 +423,13 @@ def seatbelt_used(people):
     sns.despine(left=True, bottom=True)
 
 def class_imbalance(people):
+    import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.style.use('seaborn')
     sns.set_theme(style="whitegrid")
     sns.set_color_codes("muted")
-    
+    import pandas as pd
     injuries   = people.groupby('injury_classification').count()
 
     injuries = injuries.sort_values('crash_record_id', ascending=False)
@@ -438,128 +443,3 @@ def class_imbalance(people):
     ax.set_title('Number of Crashes by Injury Type', size=20)
     
     sns.despine(left=True, bottom=True)
-
-#################### FOLIUM ####################
-################################################
-
-# !pip install folium
-# import folium
-# from folium import plugins
-
-
-# chimap = folium.Map(location=[41.878876, -87.635918],
-#                     zoom_start = 12,
-#                     control_scale=True,
-#                    tiles = "OpenStreetMap")
-
-# folium.raster_layers.TileLayer('Open Street Map').add_to(chimap)
-# folium.raster_layers.TileLayer('Stamen Toner').add_to(chimap)
-# folium.raster_layers.TileLayer('Stamen Watercolor').add_to(chimap)
-# folium.raster_layers.TileLayer('CartoDB Positron').add_to(chimap)
-# folium.raster_layers.TileLayer('CartoDB Dark_Matter').add_to(chimap)
-# folium.raster_layers.TileLayer('Stamen Terrain').add_to(chimap)
-
-
-# # folium.LayerControl().add_to(chimap)
-
-# minimap = plugins.MiniMap(toggle_display=True)
-# chimap.add_child(minimap)
-
-# plugins.Fullscreen(position='topright').add_to(chimap)
-
-# draw = plugins.Draw(export=True)
-# draw.add_to(chimap)
-# display(chimap)
-
-
-# zipmap = folium.Map(location=[41.878876, -87.635918],
-#                      zoom_start = 10)
-# zipcodes = "https://data.cityofchicago.org/api/geospatial/gdcf-axmw?method=export&format=GeoJSON"
-# folium.GeoJson(zipcodes, name="Chicago Zipcodes").add_to(zipmap)
-# dataheat['LIGHTING_CONDITION'].value_counts()
-
-# dataheat = data.dropna(subset = ['LATITUDE'])
-
-# dataheatdaylight = dataheat[dataheat['LIGHTING_CONDITION'] == 'DAYLIGHT']
-# dataheatdarknesslight = dataheat[dataheat['LIGHTING_CONDITION'] == 'DARKNESS, LIGHTED ROAD']
-# dataheatdarkness = dataheat[dataheat['LIGHTING_CONDITION'] == 'DARKNESS']
-# dataheatunknown = dataheat[dataheat['LIGHTING_CONDITION'] == 'UNKNOWN']
-# dataheatdusk = dataheat[dataheat['LIGHTING_CONDITION'] == 'DUSK']
-# dataheatdawn = dataheat[dataheat['LIGHTING_CONDITION'] == 'DAWN']
-
-
-# folium.plugins.HeatMap(list(zip(dataheat['LATITUDE'], dataheat['LONGITUDE'])), radius=2, blur=3).add_to(chimap)
-# folium.LayerControl().add_to(chimap)
-# display(chimap)
-
-
-# chimapdaylight = folium.Map(location=[41.878876, -87.635918],
-#                     zoom_start = 12,
-#                     control_scale=True,
-#                    tiles = "OpenStreetMap")
-
-# folium.plugins.HeatMap(list(zip(dataheatdaylight['LATITUDE'], dataheatdaylight['LONGITUDE'])), radius=2, blur=3).add_to(chimapdaylight)
-# folium.LayerControl().add_to(chimapdaylight)
-# plugins.Fullscreen(position='topright').add_to(chimapdaylight)
-
-# display(chimapdaylight)
-
-
-# chimapdarknesslight = folium.Map(location=[41.878876, -87.635918],
-#                     zoom_start = 12,
-#                     control_scale=True,
-#                    tiles = "OpenStreetMap")
-
-# folium.plugins.HeatMap(list(zip(dataheatdarknesslight['LATITUDE'], dataheatdarknesslight['LONGITUDE'])), radius=2, blur=3).add_to(chimapdarknesslight)
-# folium.LayerControl().add_to(chimapdarknesslight)
-# plugins.Fullscreen(position='topright').add_to(chimapdarknesslight)
-
-# display(chimapdarknesslight)
-
-
-# chimapdarkness = folium.Map(location=[41.878876, -87.635918],
-#                     zoom_start = 12,
-#                     control_scale=True,
-#                    tiles = "OpenStreetMap")
-
-# folium.plugins.HeatMap(list(zip(dataheatdarkness['LATITUDE'], dataheatdarkness['LONGITUDE'])), radius=2, blur=3).add_to(chimapdarkness)
-# folium.LayerControl().add_to(chimapdarkness)
-# plugins.Fullscreen(position='topright').add_to(chimapdarkness)
-
-# display(chimapdarkness)
-
-
-# datainj = data[data['INJURIES_TOTAL'] > 0]
-# datainjuries = datainj.dropna(subset = ['LATITUDE'])
-# datainjuries['LATITUDE'].isna().sum()
-
-
-# chiinjuries = folium.Map(location=[41.878876, -87.635918],
-#                     zoom_start = 12,
-#                     control_scale=True,
-#                    tiles = "OpenStreetMap")
-
-# folium.plugins.HeatMap(list(zip(datainjuries['LATITUDE'], datainjuries['LONGITUDE'])), radius=2, blur=3).add_to(chiinjuries)
-# folium.LayerControl().add_to(chiinjuries)
-# plugins.Fullscreen(position='topright').add_to(chiinjuries)
-
-# display(chiinjuries)
-
-
-# datainjy = data[data['INJURIES_TOTAL'] == 0]
-# datainjuriesy = datainjy.dropna(subset = ['LATITUDE'])
-# datainjuriesy['LATITUDE'].isna().sum()
-
-
-# chiinjuriesy = folium.Map(location=[41.878876, -87.635918],
-#                     zoom_start = 12,
-#                     control_scale=True,
-#                    tiles = "OpenStreetMap")
-
-# folium.plugins.HeatMap(list(zip(datainjuriesy['LATITUDE'], datainjuriesy['LONGITUDE'])), radius=2, blur=3).add_to(chiinjuriesy)
-# folium.LayerControl().add_to(chiinjuriesy)
-# plugins.Fullscreen(position='topright').add_to(chiinjuriesy)
-
-# display(chiinjuriesy)
-
-

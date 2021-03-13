@@ -22,17 +22,3 @@ def column_mask(dfs):
         
     return conv_list[0], conv_list[1], conv_list[2]
     
-# holidays = pd.tseries.holiday.USFederalHolidayCalendar().holidays(start='2012', end='2022').to_pydatetime()
-
-# final_holidays = pd.merge(dates_holidays, crashes_holiday, on=['DATE_REAL'])
-
-# data['month'] = data['crash_date'].apply(lambda x: int(x[:2]))
-# data['day'] = data['crash_date'].apply(lambda x: int(x[3:5]))
-# data['year'] = data['crash_date'].apply(lambda x: int(x[6:10]))
-# data['time_of_crash'] = data['crash_date'].apply(
-#     lambda x: int(x[11:13]+x[14:16]+x[17:19]) if 'AM' in x else int((str(int(x[11:13])+12))+x[14:16]+x[17:19])
-# )
-# data['time_of_crash'].iloc[111]
-
-
-

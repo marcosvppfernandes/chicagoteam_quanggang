@@ -145,3 +145,30 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
 
 
 To access all of our sources, or for more details about our process, see `final_notebook.ipynb` or `presentation.pdf`.
+
+### Repository Structure
+
+├── data <br>
+....├── traffic_crashes_chicago.csv<br>
+....├── traffic_crashes_people.csv<br>
+....└── traffic_crashes_vehicles.csv<br>
+├── img<br>
+....├── cdot.png<br>
+....├── chicago_night_drive.jpg<br>
+....├── chicagocitydataportal.jpg<br>
+....├── finalmodeleltestcm.png<br>
+....├── finalmodeltraincm.png<br>
+....├── scoringsafety.png<br>
+....└── visionzeroquotes.png<br>
+├── notebooks<br>
+....├── Christos_notebook.ipynb<br>
+....├── jamie_notebook.ipynb<br>
+....└── marcos_eda.ipynb<br>
+├── src<br>
+....├── __init__.py<br>
+....├── data_cleaning.py<br>
+....├── eda.py<br>
+....└── models.py<br>
+├──presentation.pdf<br>
+├── final_notebook.ipynb<br>
+└── README.md<br>

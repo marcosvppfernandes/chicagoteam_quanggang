@@ -148,6 +148,7 @@ def crashes_by_age(people):
     plt.title('Number of Crashes by Age Group')
     plt.xlabel('Age Group')
     
+    
 def crashes_by_lighting_condition():
     import matplotlib.pyplot as plt
     import seaborn as sns

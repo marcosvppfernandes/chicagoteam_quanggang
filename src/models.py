@@ -1,9 +1,8 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import BaggingClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import roc_auc_score, classification_report
+from sklearn.metrics import roc_auc_score
 from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.model_selection import StratifiedKFold
@@ -15,7 +14,7 @@ import numpy as np
 class Preprocessor():
     '''
     Takes in Pandas DataFrame (both containing predictor and target); 
-    returns DataFrame with NO MISSING VALUES YAY.
+    returns DataFrame that's ready to .
     
     Params:
     df - Pandas DataFrame
@@ -229,14 +228,14 @@ def kfold_validation(X_train, y_train, classifier,
                      continuous_cols, categorical_cols, smote=False,
                     minority_size=0.7, majority_reduce=0.7):
     from sklearn.model_selection import StratifiedKFold
-    from sklearn.metrics import recall_score, precision_score, accuracy_score, confusion_matrix
-    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import recall_score, precision_score, accuracy_score, roc_auc_score
 
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1001)
 
     val_recall = []
     val_prec = []
     val_acc = []
+    roc_auc = []
 
     for train_ind, val_ind in skf.split(X_train, y_train):
         x_t = X_train.iloc[train_ind]
@@ -280,8 +279,7 @@ def kfold_validation(X_train, y_train, classifier,
             val_recall.append(recall_score(y_val, clf.predict(x_val)))
             val_prec.append(precision_score(y_val, clf.predict(x_val)))
             val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
-            
-            return val_recall, val_prec, val_acc
+            roc_auc.append(roc_auc_score(y_val, clf.predict(x_val)))
             
         else:
             clf = classifier
@@ -291,9 +289,48 @@ def kfold_validation(X_train, y_train, classifier,
             val_recall.append(recall_score(y_val, clf.predict(x_val)))
             val_prec.append(precision_score(y_val, clf.predict(x_val)))
             val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
+            roc_auc.append(roc_auc_score(y_val, clf.predict(x_val)))
             
-            return val_recall, val_prec, val_acc
+    return val_recall, val_prec, val_acc, roc_auc
 
+def model_mask_binary(crashes):
+    
+    crashes['injured'] = crashes['injuries_total'] > 0
+    
+    conds = [(crashes['traffic_control_device']== 'NO CONTROLS'), (crashes['traffic_control_device']!= 'NO CONTROLS')]
+    choices = ['No_device', 'device_present']
+
+    crashes.traffic_control_device = np.select(conds, choices)
+        
+    conds = [((crashes['roadway_surface_cond']== 'DRY')|(crashes['roadway_surface_cond']== 'SAND, MUD, DIRT')), 
+         ((crashes['roadway_surface_cond']!= 'DRY')&(crashes['roadway_surface_cond']!= 'SAND, MUD, DIRT'))]
+    choices = ['Dry', 'Not_Dry']
+
+    crashes.roadway_surface_cond = np.select(conds, choices)
+    
+    conds = [(crashes['weather_condition']== 'CLEAR'), 
+         (crashes['weather_condition']!= 'CLEAR')]
+    choices = ['Clear', 'Not_Clear']
+
+    crashes.weather_condition = np.select(conds, choices)
+    
+    conds = [(crashes['num_units']<= 2), 
+         (crashes['num_units']>= 3)]
+    choices = ['2orless', '3+']
+
+    crashes.num_units = np.select(conds, choices)
+    
+    mod_mask = ['traffic_control_device', 'weather_condition', 'first_crash_type',
+           'roadway_surface_cond', 'road_defect', 'damage', 'prim_contributory_cause', 'num_units', 
+            'crash_hour', 'injured']
+
+    crash_mod = crashes[mod_mask]
+    crash_mod = crash_mod[(crash_mod['road_defect']!='UNKNOWN')&(crash_mod['prim_contributory_cause']!='UNABLE TO DETERMINE')&(crash_mod['prim_contributory_cause']!='NOT APPLICABLE')]
+    
+    return crash_mod
+
+
+    
 ######################## CHRISTOS ####################
 
 # from sklearn import preprocessing

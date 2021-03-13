@@ -3,7 +3,7 @@
 
 ## *Predicting severity of car crashes with Machine Learning Models*
 
-#### Authors
+#### Authors:
 [Christos Maglaras](mailto:Christo111M@gmail.com), 
 [Marcos Panyagua](mailto:marcosvppfernandes@gmail.com), 
 [Jamie Dowat](mailto:jamie_dowat44@yahoo.com)
@@ -14,7 +14,11 @@ Date: 3/12/2021
 
 
 ## Contents
-
+* `notebooks`: Contains personal contributor notebooks
+* `final_notebook.ipynb` : Contains more detailed analysis and walks through modeling process.
+* `src` : Contains source code for `final_notebook.ipynb`.
+* `data` : Contains csv files used for modeling (See below for description and links).
+* `presentation.pdf` : Slide deck for non-technical presentation
 
 ## Data: [Chicago City Data Portal](https://data.cityofchicago.org/)
 
@@ -97,16 +101,33 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
     * Class 1: NON-INCAPACITATING injuries
     * Class 2: INCAPACITATING or FATAL injuries
 
+
 *******
 
 ## EDA
+
+![topcrashsites](img/topcrashsites.png)
+
+
+![driveraction](img/driveraction.png)
+
+#### Showcasing Class Imbalance
+![classimbalance](img/classimbalance.png)
 
 *******
 
 ## Major Modeling Takeaways
 
+##### 1st Priority Metric: RECALL
+*We focused first and foremost on improve RECALL, since the most damaging false predictions would be **false negatives** (predicting no injury, when there was actually injury).*
+
+********
 ### First Simple Model
 
+
+
 ### FINAL MODEL
+
+![test](img/finalmodeltestcm.png)
 
 To access all of our sources, or for more details about our process, see final_notebook.ipynb or presentation.pdf.

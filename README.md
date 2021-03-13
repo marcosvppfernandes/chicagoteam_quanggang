@@ -131,6 +131,8 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
 
 ![test](img/finalmodel.png)
 
+#### Top 5 Features - Final Model (by Gain Metric)
+
 * `UNIT_TYPE` - DISABLED VEHICLE (1092)
 * `VEHICLE_DEFECT` - BRAKES (23.5)
 * `VEHICLE_TYPE` - SINGLE UNIT TRUCK WITH TRAILER (15.96)

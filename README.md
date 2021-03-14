@@ -148,28 +148,28 @@ To access all of our sources, or for more details about our process, see `final_
 
 ### Repository Structure
 ```
-├── data <br>
-....├── traffic_crashes_chicago.csv<br>
-....├── traffic_crashes_people.csv<br>
-....└── traffic_crashes_vehicles.csv<br>
-├── img<br>
-....├── cdot.png<br>
-....├── chicago_night_drive.jpg<br>
-....├── chicagocitydataportal.jpg<br>
-....├── finalmodeleltestcm.png<br>
-....├── finalmodeltraincm.png<br>
-....├── scoringsafety.png<br>
-....└── visionzeroquotes.png<br>
-├── notebooks<br>
-....├── Christos_notebook.ipynb<br>
-....├── jamie_notebook.ipynb<br>
-....└── marcos_eda.ipynb<br>
-├── src<br>
-....├── __init__.py<br>
-....├── data_cleaning.py<br>
-....├── eda.py<br>
-....└── models.py<br>
-├──presentation.pdf<br>
-├── final_notebook.ipynb<br>
-└── README.md<br>
+├── data 
+....├── traffic_crashes_chicago.csv
+....├── traffic_crashes_people.csv
+....└── traffic_crashes_vehicles.csv
+├── img
+....├── cdot.png
+....├── chicago_night_drive.jpg
+....├── chicagocitydataportal.jpg
+....├── finalmodeleltestcm.png
+....├── finalmodeltraincm.png
+....├── scoringsafety.png
+....└── visionzeroquotes.png
+├── notebooks
+....├── Christos_notebook.ipynb
+....├── jamie_notebook.ipynb
+....└── marcos_eda.ipynb
+├── src
+....├── __init__.py
+....├── data_cleaning.py
+....├── eda.py
+....└── models.py
+├──presentation.pdf
+├── final_notebook.ipynb
+└── README.md
 ```

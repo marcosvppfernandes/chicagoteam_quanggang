@@ -147,7 +147,7 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
 To access all of our sources, or for more details about our process, see `final_notebook.ipynb` or `presentation.pdf`.
 
 ### Repository Structure
-
+```
 ├── data <br>
 ....├── traffic_crashes_chicago.csv<br>
 ....├── traffic_crashes_people.csv<br>
@@ -172,3 +172,4 @@ To access all of our sources, or for more details about our process, see `final_
 ├──presentation.pdf<br>
 ├── final_notebook.ipynb<br>
 └── README.md<br>
+```

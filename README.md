@@ -131,7 +131,7 @@ We experimented with both a BINARY classification and a TERNARY, with our final 
 
 ### FINAL MODEL
 
-**Recall**: 84%
+**Recall**: 85%
 
 ![test](img/finalmodeltestcm.png)
 

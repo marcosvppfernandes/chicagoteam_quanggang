@@ -229,6 +229,7 @@ class MasterModeler():
                               )
         return with_scores
 
+
 def kfold_validation(X_train, y_train, classifier,
                      continuous_cols, categorical_cols, smote=False,
                      minority_size=0.7, majority_reduce=0.7):
@@ -346,6 +347,7 @@ def kfold_xgboost(X_train, y_train, classifier,
 
     return reports
 
+
 def model_mask_binary(crashes):
 
     crashes['injured'] = crashes['injuries_total'] > 0
@@ -355,20 +357,20 @@ def model_mask_binary(crashes):
 
     crashes.traffic_control_device = np.select(conds, choices)
 
-    conds = [((crashes['roadway_surface_cond'] == 'DRY') | (crashes['roadway_surface_cond'] == 'SAND, MUD, DIRT')), 
+    conds = [((crashes['roadway_surface_cond'] == 'DRY') | (crashes['roadway_surface_cond'] == 'SAND, MUD, DIRT')),
              ((crashes['roadway_surface_cond'] != 'DRY') & (crashes['roadway_surface_cond'] != 'SAND, MUD, DIRT'))]
     choices = ['Dry', 'Not_Dry']
 
     crashes.roadway_surface_cond = np.select(conds, choices)
 
-    conds = [(crashes['weather_condition']== 'CLEAR'), 
-         (crashes['weather_condition']!= 'CLEAR')]
+    conds = [(crashes['weather_condition'] == 'CLEAR'),
+         (crashes['weather_condition'] != 'CLEAR')]
     choices = ['Clear', 'Not_Clear']
 
     crashes.weather_condition = np.select(conds, choices)
 
-    conds = [(crashes['num_units']<= 2), 
-         (crashes['num_units']>= 3)]
+    conds = [(crashes['num_units'] <= 2),
+         (crashes['num_units'] >= 3)]
     choices = ['2orless', '3+']
 
     crashes.num_units = np.select(conds, choices)
@@ -382,6 +384,7 @@ def model_mask_binary(crashes):
     crash_mod = crash_mod[(crash_mod['road_defect'] != 'UNKNOWN') & (crash_mod['prim_contributory_cause'] != 'UNABLE TO DETERMINE') & (crash_mod['prim_contributory_cause'] != 'NOT APPLICABLE')]
 
     return crash_mod
+
 
 def model_mask_ternary(crashes, people, vehicles):
     import pandas as pd
@@ -549,6 +552,7 @@ def model_mask_ternary(crashes, people, vehicles):
     
     ############### FUNC RETURN
     return model_data, categoricalz, numericalz
+
 
 def show_feature_importances(clf, X):
     '''Takes in XGBoost clf only; X is X_train/test dataframe'''

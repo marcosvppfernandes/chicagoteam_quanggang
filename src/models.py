@@ -11,110 +11,102 @@ from imblearn.under_sampling import RandomUnderSampler
 import pandas as pd
 import numpy as np
 
+
 class Preprocessor():
     '''
-    Takes in Pandas DataFrame (both containing predictor and target); 
+    Takes in Pandas DataFrame (both containing predictor and target);
     returns DataFrame that's ready to .
-    
+
     Params:
     df - Pandas DataFrame
     focus_list - list of column names (strings)
     target - name of target (str) you want to try - required
-    
+
     '''
-    import pandas as pd
-    import numpy as np
-    from imblearn.over_sampling import SMOTE
-    from imblearn.under_sampling import RandomUnderSampler
-    from sklearn.preprocessing import StandardScaler, OneHotEncoder
-    
-    def __init__(self, target_col_name, df=pd.DataFrame([]), thresh=0.4, 
+
+    def __init__(self, target_col_name, df=pd.DataFrame([]), thresh=0.4,
                  train_sizes=[.5, .6, .75, .8], focus_list=None):
         self.df = df
         self.thresh = thresh
         self.target_col_name = target_col_name
         self.train_sizes = train_sizes
         self.focus_list = focus_list
-    
+
     def remove_NaNs(self):
         data_list = []
         self.df = self.df.dropna(thresh=self.thresh*len(self.df), axis=1)
-        
-        if self.focus_list != None:
+
+        if self.focus_list is not None:
             for col in self.focus_list:
-                focus_drop_data = self.df.dropna(subset=[col]).fillna(value=np.nan)
-                data_list.append(focus_drop_data)
+                focus_drop_data = self.df.dropna(subset=[col])
+                data_list.append(focus_drop_data.fillna(value=np.nan))
             return data_list
         else:
             data_list.append(self.df.fillna(value=np.nan))
             return data_list
-    
+
     def target_split(self, data_list):
-        
+
         new_data_list = []
         for dataset in data_list:
             X = dataset.drop(labels=self.target_col_name, axis=1)
             y = dataset[self.target_col_name]
             new_data_list.append({'X': X, 'y': y})
         return new_data_list
-        
-    
+
     def split_train_test(self, new_data_list):
         from sklearn.model_selection import train_test_split
         tts_data = []
         for xy in new_data_list:
             for size in self.train_sizes:
                 X_train, X_test, y_train, y_test = train_test_split(xy['X'], xy['y'],
-                                                               stratify=xy['y'], train_size=size,
-                                                                   random_state=1001)
-                
-                tts_data.append({'train': {'X': pd.DataFrame(X_train, columns=xy['X'].columns), 
-                                           'y': y_train}, 
-                                 'test': {'X': pd.DataFrame(X_test, columns=xy['X'].columns), 
-                                          'y': y_test}, 
+                                                                    stratify=xy['y'], train_size=size,
+                                                                    random_state=1001)
+
+                tts_data.append({'train': {'X': pd.DataFrame(X_train, columns=xy['X'].columns),
+                                           'y': y_train},
+                                 'test': {'X': pd.DataFrame(X_test, columns=xy['X'].columns),
+                                          'y': y_test},
                                  'train_size': size})
-            
+
         return tts_data
-    
-    
+
     def scale_and_ohe(self, tts_data, continuous_cols, categorical_cols):
         '''
         Params:
         continuous_cols - list of column names (strings) of all continuous variables
         categorical_cols - list of column names (strings, not df's) of all categorical variables
         '''
-        
+
         prepped_data = []
-        
+
         ss = StandardScaler()
         ohe = OneHotEncoder(sparse=False, handle_unknown='ignore')
-        
-        
+
         for dataset in tts_data:
-            
+
             if len(continuous_cols) > 0:
                 X_tr_cont = ss.fit_transform(dataset['train']['X'][continuous_cols])
                 X_tr_cats = ohe.fit_transform(dataset['train']['X'][categorical_cols])
 
-                X_train = pd.concat([pd.DataFrame(X_tr_cont, columns=continuous_cols), 
+                X_train = pd.concat([pd.DataFrame(X_tr_cont, columns=continuous_cols),
                                      pd.DataFrame(X_tr_cats, columns=ohe.get_feature_names())], axis=1)
 
                 X_te_cont = ss.transform(dataset['test']['X'][continuous_cols])
                 X_te_cats = ohe.transform(dataset['test']['X'][categorical_cols])
-                X_test = pd.concat([pd.DataFrame(X_te_cont, columns=continuous_cols), 
-                                     pd.DataFrame(X_te_cats, columns=ohe.get_feature_names())], axis=1)
+                X_test = pd.concat([pd.DataFrame(X_te_cont, columns=continuous_cols),
+                                    pd.DataFrame(X_te_cats, columns=ohe.get_feature_names())], axis=1)
             else:
                 X_train = pd.DataFrame(ohe.fit_transform(dataset['train']['X'][categorical_cols]), columns=ohe.get_feature_names())
                 X_test = pd.DataFrame(ohe.transform(dataset['test']['X'][categorical_cols]), columns=ohe.get_feature_names())
-            
+
             prepped_data.append(
-                {'train': {'X': X_train, 'y': dataset['train']['y']}, 
-                'test': {'X': X_test, 'y': dataset['test']['y']},
-                'train_size': dataset['train_size']}
-            )
+                                {'train': {'X': X_train, 'y': dataset['train']['y']},
+                                 'test': {'X': X_test, 'y': dataset['test']['y']},
+                                 'train_size': dataset['train_size']}
+                               )
         return prepped_data
-    
-    
+
     def balance_classes(self, prepped_data, minority_size=0.7, majority_reduce=0.7):
         # source: https://machinelearningmastery.com/smote-oversampling-for-imbalanced-classification/
         oversample_even = SMOTE()
@@ -123,41 +115,44 @@ class Preprocessor():
         smoted_data = []
         for dataset in prepped_data:
             X, y = oversample_even.fit_resample(dataset['train']['X'], dataset['train']['y'])
-            
-            
+
             X_part_over, y_part_over = oversample.fit_resample(dataset['train']['X'], dataset['train']['y'])
 
             X_under, y_under = undersample.fit_resample(X_part_over, y_part_over)
-            
+
             smoted_data.append({'train': {'SMOTE_even_split': {'X': X, 'y': y},
-                               'SMOTE_undersampled': {'X': X_under, 'y': y_under}, 'no_SMOTE': {'X': dataset['train']['X'], 'y': dataset['train']['y']}},
-                               'test': {'X': dataset['test']['X'], 'y': dataset['test']['y']},
-                               'train_size': dataset['train_size']})
-        
-        
+                                'SMOTE_undersampled': {'X': X_under, 'y': y_under},
+                                'no_SMOTE': {'X': dataset['train']['X'], 'y': dataset['train']['y']}},
+                                'test': {'X': dataset['test']['X'], 'y': dataset['test']['y']},
+                                'train_size': dataset['train_size']})
+
         return smoted_data
+
 
 class MasterModeler():
     '''
-    Takes in a preprocessed dataset dictionary, places it in a pipeline, and gridsearch through 
-    various hyperparameters. Returns diagnostics within the dataset dictionary.
-    
+    Takes in a preprocessed dataset dictionary, places it in a pipeline, and
+    gridsearch through various hyperparameters.
+    Returns diagnostics within the dataset dictionary.
+
     Params:
-    classifiers - dictionary of classifier instances (ex: {'logreg' : [LogisticRegression(), grid]})
+    classifiers - dictionary of classifier instances
+            (ex: {'logreg' : [LogisticRegression(), grid]})
     '''
     from sklearn.linear_model import LogisticRegression, ElasticNet
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.ensemble import BaggingClassifier, RandomForestClassifier
     from sklearn.preprocessing import StandardScaler, LabelBinarizer
-    from sklearn.model_selection import GridSearchCV, cross_val_score 
+    from sklearn.model_selection import GridSearchCV, cross_val_score
     from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, \
                                 mean_squared_error, mean_absolute_error, roc_auc_score, \
                                 classification_report
-    
-    def __init__(self, classifier_dict={'classifier': LogisticRegression(), 'grid': {}}):
+
+    def __init__(self, classifier_dict={'classifier': LogisticRegression(),
+                                        'grid': {}}):
         # Inherit stuff from Preprocessor()
         self.classifier_dict = classifier_dict
-    
+
     def model_pipe(self, data_list):
         '''
         Params:
@@ -165,7 +160,7 @@ class MasterModeler():
         categorical cols - pandas DataFrame containing all categorical columns
         '''
         adding_fit_objs = []
-        for dataset in data_list:                
+        for dataset in data_list:
             clf = self.classifier_dict['classifier']
             grid = self.classifier_dict['grid']
 
@@ -173,67 +168,73 @@ class MasterModeler():
             fit_obj_even = gs.fit(dataset['train']['SMOTE_even_split']['X'].dropna(), dataset['train']['SMOTE_even_split']['y'].dropna())
             fit_obj_under = gs.fit(dataset['train']['SMOTE_undersampled']['X'].dropna(), dataset['train']['SMOTE_undersampled']['y'].dropna())
             fit_obj_ns = gs.fit(dataset['train']['no_SMOTE']['X'].dropna(), dataset['train']['no_SMOTE']['y'].dropna())
-            
+
             adding_fit_objs.append({'train': {'SMOTE_even_split': {'X': dataset['train']['SMOTE_even_split']['X'], 'y': dataset['train']['SMOTE_even_split']['y'], 'fit_obj': fit_obj_even},
                                'SMOTE_undersampled': {'X': dataset['train']['SMOTE_undersampled']['X'], 'y': dataset['train']['SMOTE_undersampled']['X'], 'fit_obj': fit_obj_under},
                                 'no_SMOTE' : {'X': dataset['train']['no_SMOTE']['X'], 'y': dataset['train']['no_SMOTE']['y'], 'fit_obj': fit_obj_ns}},
                                'test': {'X': dataset['test']['X'], 'y': dataset['test']['y']},
                                'train_size': dataset['train_size']})
-            
+
         return adding_fit_objs
 
     def validate_models(self, fitted_data_list, folds=3):
         from sklearn.model_selection import cross_val_score
-        
+
         with_scores = []
         for dataset in fitted_data_list:
             fit_obj_even = dataset['train']['SMOTE_even_split']['fit_obj']
             fit_obj_under = dataset['train']['SMOTE_undersampled']['fit_obj']
             fit_obj_ns = dataset['train']['no_SMOTE']['fit_obj']
-            
-            acc_even = cross_val_score(fit_obj_even, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='accuracy')
-            
-            prec_even = cross_val_score(fit_obj_even, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='precision')
-            
-            rec_even = cross_val_score(fit_obj_even, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='recall')
-            
-            acc_under = cross_val_score(fit_obj_under, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='accuracy')
-            
-            prec_under = cross_val_score(fit_obj_under, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='precision')
-            
-            rec_under = cross_val_score(fit_obj_under, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='recall')
-            
-            acc_ns = cross_val_score(fit_obj_ns, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='accuracy')
-            
-            prec_ns = cross_val_score(fit_obj_ns, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='accuracy')
-            
-            rec_ns = cross_val_score(fit_obj_ns, dataset['test']['X'], 
-                                       dataset['test']['y'], cv=folds, scoring='accuracy')
-            
-            
-            with_scores.append(
-                            {'train': {'SMOTE_even_split': {'scores': {'acc': acc_even,'prec': prec_even,'rec': rec_even}},
-                               'SMOTE_undersampled': {'scores': {'acc': acc_under,'prec': prec_under,'rec': rec_under}},
-                                      'no_SMOTE': {'scores': {'acc': acc_ns,'prec': prec_ns,'rec': rec_ns}}},
-                             'train_size': dataset['train_size']}
-            )
-        return with_scores
-            
-####################### K FOLD VAL FUNCS ######################
 
-def kfold_validation(X_train, y_train, classifier, 
+            acc_even = cross_val_score(fit_obj_even, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='accuracy')
+            prec_even = cross_val_score(fit_obj_even, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='precision')
+
+            rec_even = cross_val_score(fit_obj_even, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='recall')
+
+            acc_under = cross_val_score(fit_obj_under, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='accuracy')
+
+            prec_under = cross_val_score(fit_obj_under, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='precision')
+
+            rec_under = cross_val_score(fit_obj_under, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='recall')
+
+            acc_ns = cross_val_score(fit_obj_ns, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='accuracy')
+
+            prec_ns = cross_val_score(fit_obj_ns, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='accuracy')
+
+            rec_ns = cross_val_score(fit_obj_ns, dataset['test']['X'],
+                                       dataset['test']['y'], cv=folds,
+                                       scoring='accuracy')
+
+            with_scores.append(
+                               {'train': {'SMOTE_even_split': {'scores': {'acc': acc_even,'prec': prec_even,'rec': rec_even}},
+                                'SMOTE_undersampled': {'scores': {'acc': acc_under,'prec': prec_under,'rec': rec_under}},
+                                'no_SMOTE': {'scores': {'acc': acc_ns,'prec': prec_ns,'rec': rec_ns}}},
+                                'train_size': dataset['train_size']}
+                              )
+        return with_scores
+
+def kfold_validation(X_train, y_train, classifier,
                      continuous_cols, categorical_cols, smote=False,
                      minority_size=0.7, majority_reduce=0.7):
     from sklearn.model_selection import StratifiedKFold
-    from sklearn.metrics import recall_score, precision_score, accuracy_score, roc_auc_score
+    from sklearn.metrics import recall_score, precision_score, accuracy_score, \
+                                roc_auc_score
 
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1001)
 
@@ -255,28 +256,30 @@ def kfold_validation(X_train, y_train, classifier,
         scaled = ss.fit_transform(x_t[cont])
         dummies = ohe.fit_transform(x_t[cat_cols])
 
-        x_t = pd.concat([pd.DataFrame(scaled, columns=cont), 
-                                  pd.DataFrame(dummies, columns=ohe.get_feature_names())], axis=1)
-
+        x_t = pd.concat([pd.DataFrame(scaled, columns=cont),
+                         pd.DataFrame(dummies,
+                                      columns=ohe.get_feature_names())],
+                        axis=1)
 
         x_val = X_train.iloc[val_ind]
         y_val = y_train.iloc[val_ind]
-        
-        
+
         sc = ss.transform(x_val[cont])
         dums = ohe.transform(x_val[cat_cols])
 
-        x_val = pd.concat([pd.DataFrame(sc, columns=cont), 
-                                  pd.DataFrame(dums, columns=ohe.get_feature_names())], axis=1)
-        
-        if smote==True:
+        x_val = pd.concat([pd.DataFrame(sc, columns=cont),
+                           pd.DataFrame(dums,
+                                        columns=ohe.get_feature_names())],
+                          axis=1)
+
+        if smote == True:
             oversample = SMOTE(sampling_strategy=minority_size)
             undersample = RandomUnderSampler(sampling_strategy=majority_reduce)
-            
+
             X_part_over, y_part_over = oversample.fit_resample(x_t, y_t)
 
             X_under, y_under = undersample.fit_resample(X_part_over, y_part_over)
-            
+
             clf = classifier
 
             clf.fit(X_under, y_under)
@@ -285,7 +288,7 @@ def kfold_validation(X_train, y_train, classifier,
             val_prec.append(precision_score(y_val, clf.predict(x_val)))
             val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
             roc_auc.append(roc_auc_score(y_val, clf.predict(x_val)))
-            
+
         else:
             clf = classifier
 
@@ -295,13 +298,13 @@ def kfold_validation(X_train, y_train, classifier,
             val_prec.append(precision_score(y_val, clf.predict(x_val)))
             val_acc.append(accuracy_score(y_val, clf.predict(x_val)))
             roc_auc.append(roc_auc_score(y_val, clf.predict(x_val)))
-            
+
     return val_recall, val_prec, val_acc, roc_auc, clf
 
 
-def kfold_xgboost(X_train, y_train, classifier, 
-                     continuous_cols, categorical_cols, smote=False,
-                     minority_size=0.7, majority_reduce=0.7):
+def kfold_xgboost(X_train, y_train, classifier,
+                  continuous_cols, categorical_cols, smote=False,
+                  minority_size=0.7, majority_reduce=0.7):
     from sklearn.model_selection import StratifiedKFold
     from sklearn.metrics import classification_report
 
@@ -313,74 +316,71 @@ def kfold_xgboost(X_train, y_train, classifier,
         x_t = X_train.iloc[train_ind]
         y_t = y_train.iloc[train_ind]
 
-
         x_val = X_train.iloc[val_ind]
         y_val = y_train.iloc[val_ind]
-        
-        
+
         if smote==True:
             oversample = SMOTE(sampling_strategy=minority_size)
             undersample = RandomUnderSampler(sampling_strategy=majority_reduce)
-            
+
             X_part_over, y_part_over = oversample.fit_resample(x_t, y_t)
 
             X_under, y_under = undersample.fit_resample(X_part_over, y_part_over)
-            
+
             clf = classifier
 
             clf.fit(X_under, y_under)
-            
+
             y_pred = clf.predict(x_val)
 
             reports.append(classification_report(y_val, y_pred))
-            
+
         else:
             clf = classifier
 
             clf.fit(x_t, y_t)
-            
+
             y_pred = clf.predict(x_val)
 
             reports.append(classification_report(y_val, y_pred))
-            
+
     return reports
 
-############################# MODEL MASKS #############################
-
 def model_mask_binary(crashes):
-    
+
     crashes['injured'] = crashes['injuries_total'] > 0
-    
+
     conds = [(crashes['traffic_control_device']== 'NO CONTROLS'), (crashes['traffic_control_device']!= 'NO CONTROLS')]
     choices = ['No_device', 'device_present']
 
     crashes.traffic_control_device = np.select(conds, choices)
-        
-    conds = [((crashes['roadway_surface_cond']== 'DRY')|(crashes['roadway_surface_cond']== 'SAND, MUD, DIRT')), 
-         ((crashes['roadway_surface_cond']!= 'DRY')&(crashes['roadway_surface_cond']!= 'SAND, MUD, DIRT'))]
+
+    conds = [((crashes['roadway_surface_cond'] == 'DRY') | (crashes['roadway_surface_cond'] == 'SAND, MUD, DIRT')), 
+             ((crashes['roadway_surface_cond'] != 'DRY') & (crashes['roadway_surface_cond'] != 'SAND, MUD, DIRT'))]
     choices = ['Dry', 'Not_Dry']
 
     crashes.roadway_surface_cond = np.select(conds, choices)
-    
+
     conds = [(crashes['weather_condition']== 'CLEAR'), 
          (crashes['weather_condition']!= 'CLEAR')]
     choices = ['Clear', 'Not_Clear']
 
     crashes.weather_condition = np.select(conds, choices)
-    
+
     conds = [(crashes['num_units']<= 2), 
          (crashes['num_units']>= 3)]
     choices = ['2orless', '3+']
 
     crashes.num_units = np.select(conds, choices)
-    
-    mod_mask = ['traffic_control_device', 'weather_condition', 'first_crash_type',
-           'roadway_surface_cond', 'road_defect', 'damage', 'prim_contributory_cause', 'num_units', 
-            'crash_hour', 'injured']
+
+    mod_mask = ['traffic_control_device', 'weather_condition',
+                'first_crash_type', 'roadway_surface_cond', 'road_defect',
+                'damage', 'prim_contributory_cause', 'num_units',
+                'crash_hour', 'injured']
 
     crash_mod = crashes[mod_mask]
-    crash_mod = crash_mod[(crash_mod['road_defect']!='UNKNOWN')&(crash_mod['prim_contributory_cause']!='UNABLE TO DETERMINE')&(crash_mod['prim_contributory_cause']!='NOT APPLICABLE')]
-    
+    crash_mod = crash_mod[(crash_mod['road_defect'] != 'UNKNOWN') & (crash_mod['prim_contributory_cause'] != 'UNABLE TO DETERMINE') & (crash_mod['prim_contributory_cause'] != 'NOT APPLICABLE')]
+
     return crash_mod
 
 def model_mask_ternary(crashes, people, vehicles):
@@ -389,18 +389,18 @@ def model_mask_ternary(crashes, people, vehicles):
     from datetime import datetime
     from dateutil import parser
     from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
-    
+
     '''must read in dataframes again'''
     cr_cols_drop = ['CRASH_DATE_EST_I', 'LANE_CNT', 'INTERSECTION_RELATED_I', 'NOT_RIGHT_OF_WAY_I','HIT_AND_RUN_I','PHOTOS_TAKEN_I', 'STATEMENTS_TAKEN_I', 'DOORING_I', 'WORK_ZONE_I', 'WORK_ZONE_TYPE','WORKERS_PRESENT_I', 'LOCATION', 'RD_NO']
-    
+
     crashes = crashes.drop(labels=cr_cols_drop, axis=1)
-    
+
     crashes.dropna(inplace=True)
-    
+
     crashes['INJURIES_FATAL'] = np.where(crashes['INJURIES_FATAL']>0, 1, 0)
-    
+
     crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='BLOWING SNOW', 'SNOW', crashes.WEATHER_CONDITION)
-    
+
     crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='FREEZING RAIN/DRIZZLE', 'RAIN', crashes.WEATHER_CONDITION)
     
     crashes.WEATHER_CONDITION = np.where(crashes.WEATHER_CONDITION=='FOG/SMOKE/HAZE', 'OTHER', crashes.WEATHER_CONDITION)
@@ -514,7 +514,12 @@ def model_mask_ternary(crashes, people, vehicles):
     categorical2 = df_a2.columns
     
     # may need to fix
-    df_a4 = df_a2.drop(columns=['UNIT_TYPE','VEHICLE_DEFECT','VEHICLE_TYPE','VEHICLE_USE','TRAVEL_DIRECTION','MANEUVER', 'FIRST_CONTACT_POINT', 'TRAFFIC_CONTROL_DEVICE','DEVICE_CONDITION','WEATHER_CONDITION','LIGHTING_CONDITION','FIRST_CRASH_TYPE','TRAFFICWAY_TYPE','ALIGNMENT','ROADWAY_SURFACE_COND','ROAD_DEFECT','REPORT_TYPE','CRASH_TYPE','DAMAGE','PRIM_CONTRIBUTORY_CAUSE','SEC_CONTRIBUTORY_CAUSE','STREET_DIRECTION', 'MOST_SEVERE_INJURY'])
+    df_a4 = df_a2.drop(columns=['UNIT_TYPE','VEHICLE_DEFECT','VEHICLE_TYPE','VEHICLE_USE','TRAVEL_DIRECTION',
+                                'MANEUVER', 'FIRST_CONTACT_POINT', 'TRAFFIC_CONTROL_DEVICE','DEVICE_CONDITION',
+                                'WEATHER_CONDITION','LIGHTING_CONDITION','FIRST_CRASH_TYPE','TRAFFICWAY_TYPE',
+                                'ALIGNMENT','ROADWAY_SURFACE_COND','ROAD_DEFECT','REPORT_TYPE','CRASH_TYPE',
+                                'DAMAGE','PRIM_CONTRIBUTORY_CAUSE','SEC_CONTRIBUTORY_CAUSE','STREET_DIRECTION', 
+                                'MOST_SEVERE_INJURY'])
     
     ds = df.drop(columns=['MOST_SEVERE_INJURY'])
     
